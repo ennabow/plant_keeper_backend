@@ -5,6 +5,7 @@ import type {
     CareLogType,
     CreateCareLogInput,
     PaginatedResult,
+    PlantEntity,
 } from '../types';
 
 interface ListCareLogsParams {
@@ -13,20 +14,37 @@ interface ListCareLogsParams {
     limit?: number;
 }
 
+const getOwnedPlant = async (ownerId: string, plantId: string): Promise<PlantEntity> => {
+    const plant = await getRepositories().plants.findById(plantId);
+    if (!plant || plant.ownerId !== ownerId) throw ApiError.notFound('Plant not found');
+    return plant;
+};
+
+// Дата последнего полива = дата самого свежего полива в логах (или null)
+const syncLastWateredAt = async (plantId: string): Promise<void> => {
+    const repos = getRepositories();
+    const latest = await repos.careLogs.findAll({
+        filter: { plantId, type: 'watering' },
+        sort: '-occurredAt',
+        limit: 1,
+    });
+    await repos.plants.update(plantId, {
+        lastWateredAt: latest.data[0]?.occurredAt ?? null,
+    });
+};
+
 export const careLogsService = {
     async list(
         ownerId: string,
         plantId: string,
         params: ListCareLogsParams,
     ): Promise<PaginatedResult<CareLogEntity>> {
-        const repos = getRepositories();
-        const plant = await repos.plants.findById(plantId);
-        if (!plant || plant.ownerId !== ownerId) throw ApiError.notFound('Plant not found');
+        await getOwnedPlant(ownerId, plantId);
 
         const filter: Partial<CareLogEntity> = { plantId };
         if (params.type) filter.type = params.type;
 
-        return repos.careLogs.findAll({
+        return getRepositories().careLogs.findAll({
             filter,
             page: params.page ?? 1,
             limit: params.limit ?? 20,
@@ -39,12 +57,10 @@ export const careLogsService = {
         plantId: string,
         input: CreateCareLogInput,
     ): Promise<CareLogEntity> {
-        const repos = getRepositories();
-        const plant = await repos.plants.findById(plantId);
-        if (!plant || plant.ownerId !== ownerId) throw ApiError.notFound('Plant not found');
+        await getOwnedPlant(ownerId, plantId);
 
-        const occurredAt = input.occurredAt ?? new Date().toISOString();
-        const log = await repos.careLogs.create({
+        const occurredAt = new Date(input.occurredAt ?? Date.now()).toISOString();
+        const log = await getRepositories().careLogs.create({
             plantId,
             ownerId,
             type: input.type,
@@ -52,9 +68,18 @@ export const careLogsService = {
             occurredAt,
         });
 
-        if (input.type === 'watering') {
-            await repos.plants.update(plantId, { lastWateredAt: occurredAt });
-        }
+        if (input.type === 'watering') await syncLastWateredAt(plantId);
         return log;
+    },
+
+    async remove(ownerId: string, plantId: string, logId: string): Promise<void> {
+        await getOwnedPlant(ownerId, plantId);
+
+        const repos = getRepositories();
+        const log = await repos.careLogs.findById(logId);
+        if (!log || log.plantId !== plantId) throw ApiError.notFound('Care log not found');
+
+        await repos.careLogs.delete(logId);
+        if (log.type === 'watering') await syncLastWateredAt(plantId);
     },
 };

@@ -22,4 +22,14 @@ export const careLogsController = {
         const log = await careLogsService.create(req.user.sub, req.params.plantId!, req.body);
         res.status(201).json({ data: log });
     }),
+
+    remove: asyncHandler(async (req: Request, res: Response) => {
+        if (!req.user) throw ApiError.unauthorized();
+        await careLogsService.remove(
+            req.user.sub,
+            req.params.plantId!,
+            req.params.logId!,
+        );
+        res.status(204).send();
+    }),
 };

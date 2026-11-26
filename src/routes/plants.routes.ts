@@ -27,3 +27,4 @@ plantsRouter.delete('/:id', validate(idValidator), plantsController.remove);
 
 plantsRouter.get('/:plantId/care-logs', validate(listCareLogsValidator), careLogsController.list);
 plantsRouter.post('/:plantId/care-logs', validate(createCareLogValidator), careLogsController.create);
+plantsRouter.delete('/:plantId/care-logs/:logId', validate(deleteCareLogValidator), careLogsController.remove);
