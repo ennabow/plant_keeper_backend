@@ -14,6 +14,17 @@ interface ListCareLogsParams {
     limit?: number;
 }
 
+const getOwnedLog = async (
+    ownerId: string,
+    plantId: string,
+    logId: string,
+): Promise<CareLogEntity> => {
+    await getOwnedPlant(ownerId, plantId);
+    const log = await getRepositories().careLogs.findById(logId);
+    if (!log || log.plantId !== plantId) throw ApiError.notFound('Care log not found');
+    return log;
+};
+
 const getOwnedPlant = async (ownerId: string, plantId: string): Promise<PlantEntity> => {
     const plant = await getRepositories().plants.findById(plantId);
     if (!plant || plant.ownerId !== ownerId) throw ApiError.notFound('Plant not found');
@@ -80,6 +91,39 @@ export const careLogsService = {
         if (!log || log.plantId !== plantId) throw ApiError.notFound('Care log not found');
 
         await repos.careLogs.delete(logId);
+        if (log.type === 'watering') await syncLastWateredAt(plantId);
+    },
+
+    async update(
+        ownerId: string,
+        plantId: string,
+        logId: string,
+        patch: UpdateCareLogInput,
+    ): Promise<CareLogEntity> {
+        const log = await getOwnedLog(ownerId, plantId, logId);
+
+        const changes: Partial<CareLogEntity> = {};
+        if (patch.type !== undefined) changes.type = patch.type;
+        if (patch.note !== undefined) changes.note = patch.note;
+        if (patch.occurredAt !== undefined) {
+            changes.occurredAt = new Date(patch.occurredAt).toISOString();
+        }
+        if (Object.keys(changes).length === 0) {
+            throw ApiError.badRequest('No fields to update');
+        }
+
+        const updated = await getRepositories().careLogs.update(logId, changes);
+        if (!updated) throw ApiError.notFound('Care log not found');
+
+        if (log.type === 'watering' || updated.type === 'watering') {
+            await syncLastWateredAt(plantId);
+        }
+        return updated;
+    },
+
+    async remove(ownerId: string, plantId: string, logId: string): Promise<void> {
+        const log = await getOwnedLog(ownerId, plantId, logId);
+        await getRepositories().careLogs.delete(logId);
         if (log.type === 'watering') await syncLastWateredAt(plantId);
     },
 };

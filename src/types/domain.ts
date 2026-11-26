@@ -127,3 +127,9 @@ export interface CreateCareLogInput {
     note?: string;
     occurredAt?: string;
 }
+
+export interface UpdateCareLogInput {
+    type?: CareLogType;
+    note?: string;
+    occurredAt?: string;
+}

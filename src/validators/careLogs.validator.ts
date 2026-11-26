@@ -21,3 +21,11 @@ export const listCareLogsValidator = [
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
     query('type').optional().isIn(types),
 ];
+
+export const updateCareLogValidator = [
+    param('plantId').isUUID(),
+    param('logId').isUUID(),
+    body('type').optional().isIn(types),
+    body('note').optional().isString().isLength({ max: 1000 }),
+    body('occurredAt').optional().isISO8601(),
+];

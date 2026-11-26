@@ -32,4 +32,15 @@ export const careLogsController = {
         );
         res.status(204).send();
     }),
+
+    update: asyncHandler(async (req: Request, res: Response<{ data: CareLogEntity }>) => {
+        if (!req.user) throw ApiError.unauthorized();
+        const log = await careLogsService.update(
+            req.user.sub,
+            req.params.plantId!,
+            req.params.logId!,
+            req.body,
+        );
+        res.json({ data: log });
+    }),
 };
