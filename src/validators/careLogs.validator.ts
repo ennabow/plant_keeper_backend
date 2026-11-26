@@ -7,7 +7,12 @@ export const createCareLogValidator = [
     param('plantId').isUUID(),
     body('type').isIn(types),
     body('note').optional().isString().isLength({ max: 1000 }),
-    body('occurredAt').optional().isISO8601().toDate(),
+    body('occurredAt').optional().isISO8601(),
+];
+
+export const deleteCareLogValidator = [
+    param('plantId').isUUID(),
+    param('logId').isUUID(),
 ];
 
 export const listCareLogsValidator = [
