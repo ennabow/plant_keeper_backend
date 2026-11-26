@@ -5,7 +5,7 @@ import type {
     CareLogType,
     CreateCareLogInput,
     PaginatedResult,
-    PlantEntity,
+    PlantEntity, UpdateCareLogInput,
 } from '../types';
 
 interface ListCareLogsParams {
@@ -81,17 +81,6 @@ export const careLogsService = {
 
         if (input.type === 'watering') await syncLastWateredAt(plantId);
         return log;
-    },
-
-    async remove(ownerId: string, plantId: string, logId: string): Promise<void> {
-        await getOwnedPlant(ownerId, plantId);
-
-        const repos = getRepositories();
-        const log = await repos.careLogs.findById(logId);
-        if (!log || log.plantId !== plantId) throw ApiError.notFound('Care log not found');
-
-        await repos.careLogs.delete(logId);
-        if (log.type === 'watering') await syncLastWateredAt(plantId);
     },
 
     async update(

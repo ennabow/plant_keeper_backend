@@ -11,7 +11,9 @@ import {
 } from '../validators/plants.validator.js';
 import {
     createCareLogValidator,
+    deleteCareLogValidator,
     listCareLogsValidator,
+    updateCareLogValidator,
 } from '../validators/careLogs.validator.js';
 
 export const plantsRouter = Router();
